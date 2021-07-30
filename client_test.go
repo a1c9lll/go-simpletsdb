@@ -120,3 +120,48 @@ func TestDeletePoints(t *testing.T) {
 		t.Fatalf("expected 0 points, got %d", len(pts))
 	}
 }
+
+func TestAddDownsampler(t *testing.T) {
+	if err := db.AddDownsampler(&Downsampler{
+		Metric:    "test10002",
+		OutMetric: "test10002_15m_max",
+		RunEvery:  "1m",
+		Query: &DownsampleQuery{
+			Tags: map[string]string{
+				"id": "2",
+			},
+			Window: map[string]interface{}{
+				"every": "15m",
+			},
+			Aggregators: []*AggregatorQuery{
+				{Name: "max"},
+			},
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	dss, err := db.ListDownsamplers()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	id := int64(-1)
+	for _, ds := range dss {
+		if ds.OutMetric == "test10002_15m_max" {
+			id = ds.ID
+		}
+	}
+
+	if id == -1 {
+		t.Fatal("expected id to not be -1")
+	}
+
+	err = db.DeleteDownsampler(&DeleteDownsamplerQuery{
+		ID: id,
+	})
+
+	if err != nil {
+		t.Fatal(err)
+	}
+}
