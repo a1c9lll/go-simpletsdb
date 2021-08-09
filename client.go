@@ -184,6 +184,42 @@ func (db *SimpleTSDB) AddDownsampler(request *Downsampler) error {
 	return nil
 }
 
+// Adds many downsamplers
+func (db *SimpleTSDB) AddDownsamplers(request []*Downsampler) error {
+	url := fmt.Sprintf("http://%s:%d/add_downsamplers", db.Host, db.Port)
+
+	buf := &bytes.Buffer{}
+	if err := json.NewEncoder(buf).Encode(request); err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest("POST", url, buf)
+	req.Header.Add("Content-Type", "application/json")
+
+	if err != nil {
+		return err
+	}
+	resp, err := db.client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == 400 {
+		err0 := &serverError{}
+		if err := json.NewDecoder(resp.Body).Decode(err0); err != nil {
+			return err
+		}
+		return errors.New(err0.Error)
+	} else if resp.StatusCode == 500 {
+		return ErrInternalServerError
+	} else if resp.StatusCode != 200 {
+		return ErrUnexpectedStatusCode
+	}
+
+	return nil
+}
+
 // Lists downsamplers
 func (db *SimpleTSDB) ListDownsamplers() ([]*Downsampler, error) {
 	url := fmt.Sprintf("http://%s:%d/list_downsamplers", db.Host, db.Port)
